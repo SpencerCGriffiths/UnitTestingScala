@@ -58,6 +58,21 @@ class TaxCalculatorSpec extends AnyWordSpec {
     }
   }
 
+  "TaxCalculator.isAdditionalRateTaxpayer" should {
+    "return true" when {
+      "the income is above (not inclusive of) the higher Rater limit 125000" in {
+        val result: Boolean = taxCalculator.isAdditionalRateTaxpayer(125001)
+        assert(result)
+      }
+    }
+    "return false" when {
+      "the income is below (inclusive of) the  higher Rate limit 125000" in {
+        val result: Boolean = taxCalculator.isAdditionalRateTaxpayer(125000)
+        assert(!result)
+      }
+    }
+  }
+
   "TaxCalculator.formattedCurrentTaxAllowance" should {
 
     "Return a formatted string of the upper limit of the users current tax band" when {
@@ -111,5 +126,185 @@ class TaxCalculatorSpec extends AnyWordSpec {
 
   }
 
+  "TaxCalculator.capitalGainsCalculator" should {
+
+    "Calculate the correct Capital Gains Tax for property" when {
+
+      "The income is lower than basic rate, gains less than the taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = true, income = 40000, gainYTD = 2000)
+        assert(result == 0)
+      }
+
+      "The income is lower than basic rate, gains more than the taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = true, income = 40000, gainYTD = 5000)
+        assert(result == 360)
+      }
+
+      "The income is the basic rate,gains less than the taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = true, income = 50000, gainYTD = 2000)
+        assert(result == 0)
+      }
+
+      "The income is the basic rate, gains more than taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = true, income = 50000, gainYTD = 5000)
+        assert(result == 360)
+      }
+
+      "The income is above the basic rate, gains less than taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = true, income = 55000, gainYTD = 2000)
+        assert(result == 0)
+      }
+      "The income is above the basic rate, gains more than taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = true, income = 55000, gainYTD = 5000)
+        assert(result == 480)
+      }
+    }
+
+    "Calculate the correct Capital Gains Tax for anything other than property" when {
+
+      "The income is lower than basic rate, gains less than the taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = false, income = 40000, gainYTD = 2000)
+        assert(result == 0)
+      }
+
+      "The income is lower than basic rate, gains more than the taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = false, income = 40000, gainYTD = 5000)
+        assert(result == 200)
+      }
+
+      "The income is the basic rate,gains less than the taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = false, income = 50000, gainYTD = 2000)
+        assert(result == 0)
+      }
+
+      "The income is the basic rate, gains more than taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = false, income = 50000, gainYTD = 5000)
+        assert(result == 200)
+      }
+
+      "The income is above the basic rate, gains less than taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = false, income = 55000, gainYTD = 2000)
+        assert(result == 0)
+      }
+      "The income is above the basic rate, gains more than taxable amount" in {
+        val result: Double = taxCalculator.capitalGainsCalculator(residentialProperty = false, income = 55000, gainYTD = 5000)
+        assert(result == 400)
+      }
+    }
+  }
+
+  "TaxCalculator.incomeAndCapitalGains" should {
+
+    "return the total amount of tax owed when shares or assets have NOT been sold" when {
+
+      "the income is below the personal tax limit" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(income = 10000)
+        assert(result == 0)
+      }
+
+      "the income is below the basic rate limit but above the personal tax limit" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(income = 50000)
+        assert(result == 8000)
+      }
+
+      "the income is below the higher Rater limit but above the basic rate " in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(income = 125000)
+        assert(result == 38000)
+      }
+
+      "the income is above the higher rate" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(income = 150000)
+        assert(result == 49250)
+      }
+    }
+
+    "return the total amount of tax owed when PROPERTY has been sold" when {
+
+        "The income is lower than personal allowance limit, gains less than the taxable amount" in {
+          val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = true, income = 10000, gainYTD = 2000, soldAssetsOrShares = true)
+          assert(result == 0)
+        }
+
+        "The income is lower than personal allowance limit, gains more than the taxable amount" in {
+          val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = true, income = 10000, gainYTD = 5000, soldAssetsOrShares = true)
+          assert(result == 360)
+        }
+
+        "The income is over the personal allowance but lower than basic rate limit, gains less than the taxable amount" in {
+          val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = true, income = 50000, gainYTD = 2000, soldAssetsOrShares = true)
+          assert(result == 8000)
+        }
+
+        "The income is over the personal allowance but lower than basic rate limit, gains more than the taxable amount" in {
+          val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = true, income = 50000, gainYTD = 5000, soldAssetsOrShares = true)
+          assert(result == 8360)
+        }
+
+        "The income is over basic rate but lower than the higher rate limit, gains less than the taxable amount" in {
+          val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = true, income = 125000, gainYTD = 2000, soldAssetsOrShares = true)
+          assert(result == 38000)
+        }
+
+        "The income is over basic rate but lower than the higher rate limit, gains more than the taxable amount" in {
+          val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = true, income = 125000, gainYTD = 5000, soldAssetsOrShares = true)
+          assert(result == 38480)
+        }
+
+        "The income is over the higher limit, gains less than the taxable amount" in {
+          val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = true, income = 150000, gainYTD = 2000, soldAssetsOrShares = true)
+          assert(result == 49250)
+        }
+
+        "The income is over the higher limit, gains more than the taxable amount" in {
+          val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = true, income = 150000, gainYTD = 5000, soldAssetsOrShares = true)
+          assert(result == 49730)
+        }
+    }
+
+
+    "return the total amount of tax owed when OTHER SHARES AND ASSESTS have been sold" when {
+
+      "The income is lower than personal allowance limit, gains less than the taxable amount" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = false, income = 10000, gainYTD = 2000, soldAssetsOrShares = true)
+        assert(result == 0)
+      }
+
+      "The income is lower than personal allowance limit, gains more than the taxable amount" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = false, income = 10000, gainYTD = 5000, soldAssetsOrShares = true)
+        assert(result == 200)
+      }
+
+      "The income is over the personal allowance but lower than basic rate limit, gains less than the taxable amount" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = false, income = 50000, gainYTD = 2000, soldAssetsOrShares = true)
+        assert(result == 8000)
+      }
+
+      "The income is over the personal allowance but lower than basic rate limit, gains more than the taxable amount" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = false, income = 50000, gainYTD = 5000, soldAssetsOrShares = true)
+        assert(result == 8200)
+      }
+
+      "The income is over basic rate but lower than the higher rate limit, gains less than the taxable amount" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = false, income = 125000, gainYTD = 2000, soldAssetsOrShares = true)
+        assert(result == 38000)
+      }
+
+      "The income is over basic rate but lower than the higher rate limit, gains more than the taxable amount" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = false, income = 125000, gainYTD = 5000, soldAssetsOrShares = true)
+        assert(result == 38400)
+      }
+
+      "The income is over the higher limit, gains less than the taxable amount" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = false, income = 150000, gainYTD = 2000, soldAssetsOrShares = true)
+        assert(result == 49250)
+      }
+
+      "The income is over the higher limit, gains more than the taxable amount" in {
+        val result: Double = taxCalculator.incomeAndCapitalGains(residentialProperty = false, income = 150000, gainYTD = 5000, soldAssetsOrShares = true)
+        assert(result == 496250)
+      }
+    }
+
+  }
 
 }
